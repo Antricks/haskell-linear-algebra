@@ -54,11 +54,13 @@ instance (Num a) => Num (Matrix a) where
     | h == h' && w == w' = zipWithMat (+) a b
     | otherwise = undefined
   (-) :: (Num a) => Matrix a -> Matrix a -> Matrix a
-  a@(Matrix h w _) - b@(Matrix h' w' _)
-    | h == h' && w == w' = zipWithMat (-) a b
+  mat@(Matrix h w _) - mat'@(Matrix h' w' _)
+    | h == h' && w == w' = zipWithMat (-) mat mat'
     | otherwise = undefined
   (*) :: (Num a) => Matrix a -> Matrix a -> Matrix a
-  a@(Matrix h w lines) * b@(Matrix h' w' lines') = undefined -- TODO implement
+  mat@(Matrix h w lines) * mat'@(Matrix h' w' lines')
+    | w == h' = Matrix h w' $ [[sum (zipWith (*) l (colAtAsList col mat')) | col <- [0 .. w' - 1]] | l <- lines]
+    | otherwise = error $ "incompatible matrix formats " ++ show h ++ "×" ++ show w ++ " & " ++ show h' ++ "×" ++ show w'
   abs :: (Num a) => Matrix a -> Matrix a
   abs = mapMatrix abs
   signum :: (Num a) => Matrix a -> Matrix a
@@ -128,7 +130,7 @@ lineMult :: (Num a) => a -> Int -> Matrix a -> Matrix a
 lineMult c i mat@(Matrix h w lines) = Matrix h w $ replaceAt i (map (* c) (lines !! i)) lines
 
 subMatrix :: Int -> Int -> Int -> Int -> Matrix a -> Matrix a
-subMatrix fstLine fstCol subH subW mat@(Matrix h w lines) = Matrix (min subH (h-fstLine)) (min subW (w-fstCol)) $ (take subH . drop fstLine) $ map (take subW . drop fstCol) lines
+subMatrix fstLine fstCol subH subW mat@(Matrix h w lines) = Matrix (min subH (h - fstLine)) (min subW (w - fstCol)) $ (take subH . drop fstLine) $ map (take subW . drop fstCol) lines
 
 mapMatrix :: (a -> b) -> Matrix a -> Matrix b
 mapMatrix op (Matrix h w lines) = Matrix h w (map (map op) lines)
@@ -150,6 +152,12 @@ unitList zero one n i = e : unitList zero one (n - 1) (i - 1)
 
 unitMatrix :: a -> a -> Int -> Matrix a
 unitMatrix zero one n = Matrix n n $ map (unitList zero one n) [0 .. n - 1]
+
+colAt :: Int -> Matrix a -> Matrix a
+colAt i mat@(Matrix h w lines) = Matrix h 1 [[l !! i] | l <- lines]
+
+colAtAsList :: Int -> Matrix a -> [a]
+colAtAsList i mat@(Matrix h w lines) = [l !! i | l <- lines]
 
 colVec :: [a] -> Matrix a
 colVec as = Matrix (length as) 1 $ map (: []) as
